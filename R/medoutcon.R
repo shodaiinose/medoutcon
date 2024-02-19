@@ -127,7 +127,7 @@ medoutcon <- function(W,
                       obs_weights = rep(1, length(Y)),
                       svy_weights = NULL,
                       two_phase_weights = rep(1, length(Y)),
-                      effect = c("direct", "indirect", "pm"),
+                      effect = c("direct", "indirect", "total", "pm"),
                       contrast = NULL,
                       g_learners = sl3::Lrnr_glm_fast$new(),
                       h_learners = sl3::Lrnr_glm_fast$new(),
@@ -182,7 +182,7 @@ medoutcon <- function(W,
   # need to loop over different contrasts to construct direct/indirect effects
   if (is.null(contrast)) {
 
-    if (effect != "pm") {
+    if (effect != "pm" & effect != "total") {
       # select appropriate component for direct vs indirect effects
       is_effect_direct <- (effect == "direct")
       contrast_grid <- list(switch(2 - is_effect_direct,
@@ -191,7 +191,11 @@ medoutcon <- function(W,
       ))
       # term needed in the decomposition for both effects
       contrast_grid[[2]] <- c(1, 0)
-    } else {
+    }
+    else if(effect == "total"){
+      contrast_grid <- list(c(1, 1), c(0, 0))
+    }
+    else {
       contrast_grid <- list(
         c(1, 1), c(0, 0), c(1, 0)
       )
@@ -294,6 +298,23 @@ medoutcon <- function(W,
     )
     class(ie_est_out) <- "medoutcon"
     return(ie_est_out)
+  } else if (is.null(contrast) && (effect == "total")){
+    # compute parameter estimate, influence function, and variances
+    t_theta_est <- est_params[[1]]$theta - est_params[[2]]$theta
+    t_eif_est <- est_params[[1]]$eif - est_params[[2]]$eif
+    t_var_est <- stats::var(t_eif_est) / nrow(data)
+
+    # construct output in same style as for contrast-specific parameter
+    t_est_out <- list(
+      theta = t_theta_est,
+      var = t_var_est,
+      eif = t_eif_est,
+      type = estimator,
+      param = paste("total", effect_type, sep = "_"),
+      outcome = as.numeric(Y)
+    )
+    class(t_est_out) <- "medoutcon"
+    return(t_est_out)
   } else if (is.null(contrast) && (effect == "pm")) {
     # compute parameter estimate, influence function, and variances
     pm_theta_est <-  1 - log(est_params[[3]]$theta / est_params[[2]]$theta) /

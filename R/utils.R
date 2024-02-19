@@ -31,7 +31,7 @@ confint.medoutcon <- function(object,
 
   # assume continuous outcome if more than two levels in outcome node
   if (length(unique(object$outcome)) > 2 ||
-    stringr::str_detect(object$param, "direct")) {
+    stringr::str_detect(object$param, "direct|total")) {
     # NOTE: variance already scaled (i.e., Var(D)/n)
     se_eif <- sqrt(object$var)
 
